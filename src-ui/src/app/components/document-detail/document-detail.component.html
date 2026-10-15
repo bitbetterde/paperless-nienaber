@@ -277,6 +277,18 @@
                       (removed)="removeField(fieldInstance)"
                       [error]="getCustomFieldError(i)"></pngx-input-select>
                     }
+                    @case (CustomFieldDataType.ManagedSelect) {
+                      <pngx-input-managed-select formControlName="value"
+                      [title]="getCustomFieldFromInstance(fieldInstance)?.name"
+                      [customField]="getCustomFieldFromInstance(fieldInstance)"
+                      [suggestions]="suggestions()?.custom_fields?.[fieldInstance.field]"
+                      [showFilter]="true"
+                      (filterDocuments)="filterManagedSelectDocuments(fieldInstance.field, $event)"
+                      [removable]="userCanEdit"
+                      (removed)="removeField(fieldInstance)"
+                      [horizontal]="true"
+                      [error]="getCustomFieldError(i)"></pngx-input-managed-select>
+                    }
                     @case (CustomFieldDataType.LongText) {
                       <pngx-input-textarea formControlName="value"
                       [title]="getCustomFieldFromInstance(fieldInstance)?.name"

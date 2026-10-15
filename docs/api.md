@@ -162,6 +162,100 @@ including `gt` (>), `gte` (>=), `lt` (<), `lte` (<=), and `range`.
 Lastly, document link fields support a `contains` operator that behaves
 like a "is superset of" check.
 
+### Managed-select custom fields
+
+A managed-select custom field stores one choice per document. Unlike the
+embedded options of a regular `select` field, every managed-select field owns
+an independent pool of reusable, searchable objects. These choices support the
+same matching rules, ownership, and object permissions as correspondents.
+
+Create the field first:
+
+```http
+POST /api/custom_fields/
+Content-Type: application/json
+
+{
+  "name": "Customer",
+  "data_type": "managed_select",
+  "extra_data": {}
+}
+```
+
+Create choices in that field's pool through `/api/custom_field_choices/`:
+
+```http
+POST /api/custom_field_choices/
+Content-Type: application/json
+
+{
+  "custom_field": 12,
+  "name": "ACME",
+  "matching_algorithm": 3,
+  "match": "ACME Corp",
+  "is_insensitive": true
+}
+```
+
+The matching-algorithm values are `0` (none), `1` (any word), `2` (all
+words), `3` (literal), `4` (regular expression), `5` (fuzzy), and `6`
+(automatic classifier). Ownership and sharing can be set with `owner` and
+`set_permissions`, just as for correspondents.
+
+Choices can be listed, searched, filtered to one pool, updated, and deleted:
+
+```http
+GET    /api/custom_field_choices/?custom_field=12&name__icontains=acme
+GET    /api/custom_field_choices/34/
+PATCH  /api/custom_field_choices/34/
+DELETE /api/custom_field_choices/34/
+```
+
+The list response includes `document_count` and is restricted to choices the
+requesting user is allowed to view. A choice cannot be moved to another custom
+field. Deleting a choice sets affected document values to `null` while keeping
+their custom-field instances; deleting the custom field removes its pool and
+instances.
+
+Document reads and writes retain the existing `{field, value}` representation.
+For managed-select fields, `value` is the numeric choice ID:
+
+```http
+PATCH /api/documents/123/
+Content-Type: application/json
+
+{
+  "custom_fields": [
+    {"field": 12, "value": 34}
+  ]
+}
+```
+
+The choice must belong to the given field and must be visible to the acting
+user. A previously assigned private value may be retained, and clients display
+it as `Private` when its choice is not visible.
+
+Document filtering accepts choice IDs or exact choice names:
+
+```text
+?custom_field_query=[12,"exact",34]
+?custom_field_query=[12,"exact","ACME"]
+?custom_field_query=[12,"in",[34,35]]
+?custom_field_query=[12,"isnull",true]
+?custom_field_query=[12,"exists",true]
+```
+
+`GET /api/documents/{id}/suggestions/` returns matching-rule and classifier
+suggestions in a field-ID-to-choice-ID-list mapping:
+
+```json
+{
+  "custom_fields": {
+    "12": [34]
+  }
+}
+```
+
 ### `/api/search/autocomplete/`
 
 Get auto completions for a partial search term.

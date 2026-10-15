@@ -40,6 +40,7 @@ from documents.file_handling import generate_filename
 from documents.file_handling import generate_unique_filename
 from documents.models import Correspondent
 from documents.models import CustomField
+from documents.models import CustomFieldChoice
 from documents.models import CustomFieldInstance
 from documents.models import Document
 from documents.models import DocumentType
@@ -152,6 +153,57 @@ def set_correspondent(
         document.save(update_fields=("correspondent",))
 
     return selected
+
+
+def set_managed_selects(
+    sender: object,
+    document: Document,
+    *,
+    logging_group: object = None,
+    classifier: DocumentClassifier | None = None,
+    replace: bool = False,
+    use_first: bool = True,
+    dry_run: bool = False,
+    **kwargs: Any,
+) -> dict[int, CustomFieldChoice | None]:
+    """Assign correspondent-like managed-select custom-field values."""
+    matches_by_field = matching.match_custom_field_choices(document, classifier)
+    existing = {
+        instance.field_id: instance
+        for instance in document.custom_fields.filter(
+            field__data_type=CustomField.FieldDataType.MANAGED_SELECT,
+        ).select_related("value_managed_select")
+    }
+    field_ids = set(matches_by_field)
+    if replace:
+        field_ids.update(existing)
+
+    selected_by_field: dict[int, CustomFieldChoice | None] = {}
+    for field_id in sorted(field_ids):
+        instance = existing.get(field_id)
+        if instance is not None and instance.value_managed_select_id and not replace:
+            continue
+
+        candidates = matches_by_field.get(field_id, [])
+        if len(candidates) > 1 and not use_first:
+            continue
+        selected = candidates[0] if candidates else None
+        if selected is None and instance is None:
+            continue
+
+        selected_by_field[field_id] = selected
+        if not dry_run:
+            CustomFieldInstance.objects.update_or_create(
+                document=document,
+                field_id=field_id,
+                defaults={"value_managed_select": selected},
+            )
+            logger.info(
+                f"Assigning managed select choice {selected} for field {field_id} to {document}",
+                extra={"group": logging_group},
+            )
+
+    return selected_by_field
 
 
 def set_document_type(
@@ -714,6 +766,42 @@ def check_paths_and_prune_custom_fields(
         and instance.extra_data
     ):  # Only select fields, for now
         process_cf_select_update.apply_async(kwargs={"custom_field": instance})
+
+
+@receiver(models.signals.post_save, sender=CustomFieldChoice)
+def update_paths_for_managed_select_choice(
+    sender,
+    instance: CustomFieldChoice,
+    **kwargs,
+) -> None:
+    for field_instance in instance.field_instances.select_related(
+        "document",
+    ).iterator():
+        update_filename_and_move_files(CustomFieldInstance, field_instance)
+
+
+@receiver(models.signals.pre_delete, sender=CustomFieldChoice)
+def remember_managed_select_choice_instances(
+    sender,
+    instance: CustomFieldChoice,
+    **kwargs,
+) -> None:
+    instance._affected_field_instance_ids = list(
+        instance.field_instances.values_list("pk", flat=True),
+    )
+
+
+@receiver(models.signals.post_delete, sender=CustomFieldChoice)
+def update_paths_after_managed_select_choice_deletion(
+    sender,
+    instance: CustomFieldChoice,
+    **kwargs,
+) -> None:
+    field_instance_ids = getattr(instance, "_affected_field_instance_ids", [])
+    for field_instance in CustomFieldInstance.objects.filter(
+        pk__in=field_instance_ids,
+    ).select_related("document"):
+        update_filename_and_move_files(CustomFieldInstance, field_instance)
 
 
 @receiver(models.signals.post_delete, sender=CustomField)

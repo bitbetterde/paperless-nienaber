@@ -326,6 +326,14 @@ def get_custom_fields_context(
                 ),
                 replacement_text="-",
             )
+        elif field_instance.field.data_type == CustomField.FieldDataType.MANAGED_SELECT:
+            value = pathvalidate.sanitize_filename(
+                unicodedata.normalize(
+                    "NFC",
+                    field_instance.value_managed_select.name,
+                ),
+                replacement_text="-",
+            )
         else:
             value = field_instance.value
         field_data["custom_fields"][

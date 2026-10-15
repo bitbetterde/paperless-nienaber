@@ -13,6 +13,8 @@ export interface DocumentSuggestions {
   storage_paths?: number[]
   suggested_storage_paths?: string[]
 
+  custom_fields?: Record<string, number[]>
+
   dates?: string[] // ISO-formatted date string e.g. 2022-11-03
 }
 
@@ -41,6 +43,15 @@ export function mergeSuggestions(
     suggested_storage_paths: union(
       a.suggested_storage_paths,
       b.suggested_storage_paths
+    ),
+    custom_fields: Object.fromEntries(
+      [...new Set([
+        ...Object.keys(a.custom_fields ?? {}),
+        ...Object.keys(b.custom_fields ?? {}),
+      ])].map((fieldId) => [
+        fieldId,
+        union(a.custom_fields?.[fieldId], b.custom_fields?.[fieldId]),
+      ]),
     ),
     dates: union(a.dates, b.dates),
   }

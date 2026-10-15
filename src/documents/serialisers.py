@@ -58,6 +58,7 @@ from documents.data_models import DocumentSource
 from documents.filters import CustomFieldQueryParser
 from documents.models import Correspondent
 from documents.models import CustomField
+from documents.models import CustomFieldChoice
 from documents.models import CustomFieldInstance
 from documents.models import Document
 from documents.models import DocumentBarcode
@@ -82,6 +83,7 @@ from documents.permissions import get_document_count_filter_for_user
 from documents.permissions import get_groups_with_only_permission
 from documents.permissions import has_perms_owner_aware
 from documents.permissions import permitted_document_ids
+from documents.permissions import permitted_object_ids
 from documents.permissions import restrict_queryset_to_visible
 from documents.permissions import set_permissions_for_object
 from documents.regex import validate_regex_pattern
@@ -550,6 +552,70 @@ class CorrespondentSerializer(MatchingModelSerializer, OwnedObjectSerializer):
         )
 
 
+class CustomFieldChoiceSerializer(MatchingModelSerializer, OwnedObjectSerializer):
+    class Meta:
+        model = CustomFieldChoice
+        fields = (
+            "id",
+            "slug",
+            "custom_field",
+            "name",
+            "match",
+            "matching_algorithm",
+            "is_insensitive",
+            "document_count",
+            "owner",
+            "permissions",
+            "user_can_change",
+            "set_permissions",
+        )
+
+    def validate(self, data):
+        custom_field = data.get(
+            "custom_field",
+            self.instance.custom_field if self.instance is not None else None,
+        )
+        if custom_field is None or (
+            custom_field.data_type != CustomField.FieldDataType.MANAGED_SELECT
+        ):
+            raise serializers.ValidationError(
+                {"custom_field": _("Choices require a managed select custom field.")},
+            )
+        if (
+            self.instance is not None
+            and custom_field.pk != self.instance.custom_field_id
+        ):
+            raise serializers.ValidationError(
+                {"custom_field": _("The custom field cannot be changed.")},
+            )
+
+        name = data.get("name", self.instance.name if self.instance else None)
+        owner = data.get(
+            "owner",
+            self.instance.owner
+            if self.instance is not None
+            else getattr(self, "user", None),
+        )
+        duplicate = CustomFieldChoice.objects.filter(
+            custom_field=custom_field,
+            name=name,
+            owner=owner,
+        )
+        if self.instance is not None:
+            duplicate = duplicate.exclude(pk=self.instance.pk)
+        if duplicate.exists():
+            raise serializers.ValidationError(
+                {
+                    "error": "Object violates custom field / owner / name unique constraint",
+                },
+            )
+        return data
+
+    def validate_unique_together(self, validated_data, instance=None) -> None:
+        # Uniqueness includes custom_field and is handled by validate().
+        return None
+
+
 class DocumentTypeSerializer(MatchingModelSerializer, OwnedObjectSerializer):
     class Meta:
         model = DocumentType
@@ -797,6 +863,18 @@ class CustomFieldSerializer(serializers.ModelSerializer[CustomField]):
                 {"error": "Object violates name unique constraint"},
             )
         if (
+            self.instance is not None
+            and self.instance.data_type == CustomField.FieldDataType.MANAGED_SELECT
+            and attrs.get("data_type", self.instance.data_type)
+            != CustomField.FieldDataType.MANAGED_SELECT
+            and self.instance.choices.exists()
+        ):
+            raise serializers.ValidationError(
+                {
+                    "data_type": "A managed select field with choices cannot change type.",
+                },
+            )
+        if (
             "data_type" in attrs
             and attrs["data_type"] == CustomField.FieldDataType.SELECT
         ) or (
@@ -901,6 +979,8 @@ class CustomFieldInstanceSerializer(serializers.ModelSerializer[CustomFieldInsta
         return instance
 
     def get_value(self, obj: CustomFieldInstance) -> str | int | float | dict | None:
+        if obj.field.data_type == CustomField.FieldDataType.MANAGED_SELECT:
+            return obj.value_managed_select_id
         return obj.value
 
     def validate(self, data):
@@ -956,6 +1036,40 @@ class CustomFieldInstanceSerializer(serializers.ModelSerializer[CustomFieldInsta
                 except Exception:
                     raise serializers.ValidationError(
                         f"Value must be an id of an element in {select_options}",
+                    )
+            elif field.data_type == CustomField.FieldDataType.MANAGED_SELECT:
+                try:
+                    choice_id = int(data["value"])
+                except (TypeError, ValueError):
+                    raise serializers.ValidationError("Value must be a choice id.")
+
+                choices = CustomFieldChoice.objects.filter(
+                    pk=choice_id,
+                    custom_field=field,
+                )
+                request = self.context.get("request")
+                user = getattr(request, "user", None) if request is not None else None
+                if user is not None:
+                    visible_choice_ids = permitted_object_ids(
+                        user,
+                        CustomFieldChoice,
+                        "view_customfieldchoice",
+                    )
+                    root_instance = getattr(self.root, "instance", None)
+                    preserves_existing_private_value = (
+                        isinstance(root_instance, Document)
+                        and root_instance.custom_fields.filter(
+                            field=field,
+                            value_managed_select_id=choice_id,
+                        ).exists()
+                    )
+                    if not preserves_existing_private_value:
+                        choices = choices.filter(pk__in=visible_choice_ids)
+                try:
+                    data["value"] = choices.get().pk
+                except CustomFieldChoice.DoesNotExist:
+                    raise serializers.ValidationError(
+                        "Choice does not exist, belongs to another field, or is not visible.",
                     )
             elif field.data_type == CustomField.FieldDataType.DOCUMENTLINK:
                 if not (isinstance(data["value"], list) or data["value"] is None):

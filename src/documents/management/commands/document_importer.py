@@ -39,6 +39,7 @@ from documents.management.commands.base import PaperlessCommand
 from documents.management.commands.mixins import CryptMixin
 from documents.models import Correspondent
 from documents.models import CustomField
+from documents.models import CustomFieldChoice
 from documents.models import CustomFieldInstance
 from documents.models import Document
 from documents.models import DocumentType
@@ -520,6 +521,7 @@ class Command(CryptMixin, PaperlessCommand):
                 auditlog.unregister(DocumentType)
                 auditlog.unregister(Note)
                 auditlog.unregister(CustomField)
+                auditlog.unregister(CustomFieldChoice)
                 auditlog.unregister(CustomFieldInstance)
 
             # Fill up the database with whatever is in the manifest

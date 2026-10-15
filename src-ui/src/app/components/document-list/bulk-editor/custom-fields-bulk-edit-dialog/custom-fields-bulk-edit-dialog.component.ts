@@ -12,6 +12,7 @@ import { CheckComponent } from 'src/app/components/common/input/check/check.comp
 import { DateComponent } from 'src/app/components/common/input/date/date.component'
 import { DocumentLinkComponent } from 'src/app/components/common/input/document-link/document-link.component'
 import { MonetaryComponent } from 'src/app/components/common/input/monetary/monetary.component'
+import { ManagedSelectComponent } from 'src/app/components/common/input/managed-select/managed-select.component'
 import { NumberComponent } from 'src/app/components/common/input/number/number.component'
 import { SelectComponent } from 'src/app/components/common/input/select/select.component'
 import { TextComponent } from 'src/app/components/common/input/text/text.component'
@@ -32,6 +33,7 @@ import { TextAreaComponent } from '../../../common/input/textarea/textarea.compo
     DateComponent,
     DocumentLinkComponent,
     MonetaryComponent,
+    ManagedSelectComponent,
     NumberComponent,
     SelectComponent,
     TextComponent,

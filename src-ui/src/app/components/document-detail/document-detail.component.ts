@@ -44,6 +44,10 @@ import {
 import { Correspondent } from 'src/app/data/correspondent'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
 import { CustomFieldInstance } from 'src/app/data/custom-field-instance'
+import {
+  CustomFieldQueryLogicalOperator,
+  CustomFieldQueryOperator,
+} from 'src/app/data/custom-field-query'
 import { DataType } from 'src/app/data/datatype'
 import { Document, DocumentVersionInfo } from 'src/app/data/document'
 import { DocumentMetadata } from 'src/app/data/document-metadata'
@@ -56,6 +60,7 @@ import { DocumentType } from 'src/app/data/document-type'
 import { FilterRule } from 'src/app/data/filter-rule'
 import {
   FILTER_CORRESPONDENT,
+  FILTER_CUSTOM_FIELDS_QUERY,
   FILTER_CREATED_AFTER,
   FILTER_CREATED_BEFORE,
   FILTER_DOCUMENT_TYPE,
@@ -114,6 +119,7 @@ import { CheckComponent } from '../common/input/check/check.component'
 import { DateComponent } from '../common/input/date/date.component'
 import { DocumentLinkComponent } from '../common/input/document-link/document-link.component'
 import { MonetaryComponent } from '../common/input/monetary/monetary.component'
+import { ManagedSelectComponent } from '../common/input/managed-select/managed-select.component'
 import { NumberComponent } from '../common/input/number/number.component'
 import { PermissionsFormComponent } from '../common/input/permissions/permissions-form/permissions-form.component'
 import { SelectComponent } from '../common/input/select/select.component'
@@ -185,6 +191,7 @@ interface IncomingDocumentUpdate {
     TextComponent,
     NumberComponent,
     MonetaryComponent,
+    ManagedSelectComponent,
     UrlComponent,
     SuggestionsDropdownComponent,
     CustomDatePipe,
@@ -1837,6 +1844,19 @@ export class DocumentDetailComponent
     })
 
     this.documentListViewService.quickFilter(filterRules)
+  }
+
+  filterManagedSelectDocuments(fieldId: number, items: ObjectWithId[]) {
+    if (!items?.length) return
+    this.documentListViewService.quickFilter([
+      {
+        rule_type: FILTER_CUSTOM_FIELDS_QUERY,
+        value: JSON.stringify([
+          CustomFieldQueryLogicalOperator.Or,
+          [[fieldId, CustomFieldQueryOperator.Exact, items[0].id]],
+        ]),
+      },
+    ])
   }
 
   private getCustomFields() {

@@ -12,6 +12,7 @@ from documents.data_models import ConsumableDocument
 from documents.data_models import DocumentSource
 from documents.filters import CustomFieldQueryParser
 from documents.models import Correspondent
+from documents.models import CustomFieldChoice
 from documents.models import Document
 from documents.models import DocumentType
 from documents.models import MatchingModel
@@ -72,6 +73,49 @@ def match_correspondents(document: Document, classifier: DocumentClassifier, use
             correspondents,
         ),
     )
+
+
+def match_custom_field_choices(
+    document: Document,
+    classifier: DocumentClassifier | None,
+    user=None,
+) -> dict[int, list[CustomFieldChoice]]:
+    """Return matching managed-select choices grouped by custom field."""
+    if user is None and document.owner is not None:
+        user = document.owner
+
+    choices = CustomFieldChoice.objects.select_related("custom_field").order_by(
+        "name",
+        "pk",
+    )
+    if user is not None:
+        choices = choices.filter(
+            id__in=permitted_object_ids(
+                user,
+                CustomFieldChoice,
+                "view_customfieldchoice",
+            ),
+        )
+
+    matches_by_field: dict[int, list[CustomFieldChoice]] = {}
+    predicted_by_field: dict[int, int | None] = {}
+    for choice in choices:
+        if choice.custom_field_id not in predicted_by_field:
+            predicted_by_field[choice.custom_field_id] = (
+                classifier.predict_custom_field_choice(
+                    choice.custom_field_id,
+                    document.suggestion_content,
+                )
+                if classifier
+                else None
+            )
+        predicted_id = predicted_by_field[choice.custom_field_id]
+        if matches(choice, document) or (
+            choice.pk == predicted_id
+            and choice.matching_algorithm == MatchingModel.MATCH_AUTO
+        ):
+            matches_by_field.setdefault(choice.custom_field_id, []).append(choice)
+    return matches_by_field
 
 
 def match_document_types(document: Document, classifier: DocumentClassifier, user=None):

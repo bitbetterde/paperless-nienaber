@@ -10,6 +10,7 @@ export enum CustomFieldDataType {
   Monetary = 'monetary',
   DocumentLink = 'documentlink',
   Select = 'select',
+  ManagedSelect = 'managed_select',
   LongText = 'longtext',
 }
 
@@ -49,6 +50,10 @@ export const DATA_TYPE_LABELS = [
   {
     id: CustomFieldDataType.Select,
     name: $localize`Select`,
+  },
+  {
+    id: CustomFieldDataType.ManagedSelect,
+    name: $localize`Managed select`,
   },
   {
     id: CustomFieldDataType.LongText,

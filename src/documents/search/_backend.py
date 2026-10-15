@@ -21,6 +21,7 @@ from typing import cast
 import filelock
 import tantivy
 from django.conf import settings
+from django.db.models import Prefetch
 from django.utils.timezone import get_current_timezone
 
 from documents.search._query import extract_cjk_text
@@ -322,6 +323,7 @@ class WriteBatch:
         Args:
             ids: Primary keys of Document instances to index
         """
+        from documents.models import CustomFieldInstance
         from documents.models import Document
         from documents.versioning import annotate_effective_content
         from documents.versioning import root_document_ids
@@ -336,7 +338,13 @@ class WriteBatch:
             .prefetch_related(
                 "tags",
                 "notes__user",
-                "custom_fields__field",
+                Prefetch(
+                    "custom_fields",
+                    queryset=CustomFieldInstance.objects.select_related(
+                        "field",
+                        "value_managed_select",
+                    ),
+                ),
                 "barcodes",
                 "versions__barcodes",
             ),

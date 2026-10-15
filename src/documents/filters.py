@@ -42,6 +42,7 @@ from rest_framework.filters import OrderingFilter
 
 from documents.models import Correspondent
 from documents.models import CustomField
+from documents.models import CustomFieldChoice
 from documents.models import CustomFieldInstance
 from documents.models import Document
 from documents.models import DocumentType
@@ -246,6 +247,16 @@ class CustomFieldFilterSet(FilterSet):
         }
 
 
+class CustomFieldChoiceFilterSet(FilterSet):
+    class Meta:
+        model = CustomFieldChoice
+        fields = {
+            "id": ID_KWARGS,
+            "name": CHAR_KWARGS,
+            "custom_field": ID_KWARGS,
+        }
+
+
 @extend_schema_field(serializers.CharField)
 class CustomFieldsFilter(Filter):
     def filter(self, qs, value):
@@ -279,6 +290,9 @@ class CustomFieldsFilter(Filter):
                 | qs.filter(custom_fields__value_monetary__icontains=value)
                 | qs.filter(custom_fields__value_document_ids__icontains=value)
                 | qs.filter(custom_fields__value_select__in=option_ids)
+                | qs.filter(
+                    custom_fields__value_managed_select__name__icontains=value,
+                )
                 | qs.filter(custom_fields__value_long_text__icontains=value)
             ).distinct()
         else:
@@ -340,6 +354,33 @@ class SelectField(serializers.CharField):
         return super().to_internal_value(data)
 
 
+class ManagedSelectField(serializers.IntegerField):
+    def __init__(self, custom_field: CustomField) -> None:
+        self._custom_field = custom_field
+        super().__init__()
+
+    def to_internal_value(self, data):
+        if isinstance(data, str) and not data.isdigit():
+            choice_id = (
+                CustomFieldChoice.objects.filter(
+                    custom_field=self._custom_field,
+                    name=data,
+                )
+                .order_by("pk")
+                .values_list("pk", flat=True)
+                .first()
+            )
+            if choice_id is not None:
+                data = choice_id
+        value = super().to_internal_value(data)
+        if not CustomFieldChoice.objects.filter(
+            custom_field=self._custom_field,
+            pk=value,
+        ).exists():
+            self.fail("invalid")
+        return value
+
+
 def handle_validation_prefix(func: Callable):
     """
     Catch ValidationErrors raised by the wrapped function
@@ -393,6 +434,7 @@ class CustomFieldQueryParser:
         CustomField.FieldDataType.MONETARY: ("basic", "string", "arithmetic"),
         CustomField.FieldDataType.DOCUMENTLINK: ("basic", "containment"),
         CustomField.FieldDataType.SELECT: ("basic",),
+        CustomField.FieldDataType.MANAGED_SELECT: ("basic",),
         CustomField.FieldDataType.LONG_TEXT: ("basic", "string"),
     }
 
@@ -655,6 +697,8 @@ class CustomFieldQueryParser:
         elif custom_field.data_type == CustomField.FieldDataType.SELECT:
             # We use this custom field to permit SELECT option names.
             field = SelectField(custom_field)
+        elif custom_field.data_type == CustomField.FieldDataType.MANAGED_SELECT:
+            field = ManagedSelectField(custom_field)
         elif custom_field.data_type == CustomField.FieldDataType.URL:
             # For URL fields we don't need to be strict about validation (e.g., for istartswith).
             field = serializers.CharField()
@@ -1199,6 +1243,13 @@ class DocumentsOrderingFilter(OrderingFilter):
                             default=Value(0),
                             output_field=IntegerField(),
                         ),
+                    )
+                case CustomField.FieldDataType.MANAGED_SELECT:
+                    annotation = Subquery(
+                        CustomFieldInstance.objects.filter(
+                            document_id=OuterRef("id"),
+                            field_id=custom_field_id,
+                        ).values("value_managed_select__name")[:1],
                     )
                 case CustomField.FieldDataType.DOCUMENTLINK:
                     annotation = Subquery(
