@@ -18,12 +18,14 @@ class DocumentsConfig(AppConfig):
         from documents.signals.handlers import send_websocket_document_updated
         from documents.signals.handlers import set_correspondent
         from documents.signals.handlers import set_document_type
+        from documents.signals.handlers import set_managed_selects
         from documents.signals.handlers import set_storage_path
         from documents.signals.handlers import set_tags
 
         document_consumption_finished.connect(add_inbox_tags)
         document_consumption_finished.connect(set_correspondent)
         document_consumption_finished.connect(set_document_type)
+        document_consumption_finished.connect(set_managed_selects)
         document_consumption_finished.connect(set_tags)
         document_consumption_finished.connect(set_storage_path)
         document_consumption_finished.connect(run_workflows_added)

@@ -1253,6 +1253,7 @@ class CustomField(models.Model):
         MONETARY = ("monetary", _("Monetary"))
         DOCUMENTLINK = ("documentlink", _("Document Link"))
         SELECT = ("select", _("Select"))
+        MANAGED_SELECT = ("managed_select", _("Managed Select"))
         LONG_TEXT = ("longtext", _("Long Text"))
 
     created = models.DateTimeField(
@@ -1295,6 +1296,59 @@ class CustomField(models.Model):
         return f"{self.name} : {self.data_type}"
 
 
+class CustomFieldChoice(MatchingModel):
+    """A reusable, matchable value belonging to a managed-select custom field."""
+
+    custom_field = models.ForeignKey(
+        CustomField,
+        on_delete=models.CASCADE,
+        related_name="choices",
+        verbose_name=_("custom field"),
+    )
+
+    class Meta(MatchingModel.Meta):
+        verbose_name = _("custom field choice")
+        verbose_name_plural = _("custom field choices")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["custom_field", "name", "owner"],
+                name="documents_customfieldchoice_unique_field_name_owner",
+            ),
+            models.UniqueConstraint(
+                fields=["custom_field", "name"],
+                condition=models.Q(owner__isnull=True),
+                name="documents_customfieldchoice_unique_unowned_field_name",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        if (
+            self.custom_field_id is not None
+            and self.custom_field.data_type != CustomField.FieldDataType.MANAGED_SELECT
+        ):
+            raise ValidationError(
+                {"custom_field": _("Choices require a managed select custom field.")},
+            )
+        if self.pk is not None:
+            original_field_id = (
+                type(self)
+                .objects.filter(pk=self.pk)
+                .values_list(
+                    "custom_field_id",
+                    flat=True,
+                )
+                .first()
+            )
+            if (
+                original_field_id is not None
+                and original_field_id != self.custom_field_id
+            ):
+                raise ValidationError(
+                    {"custom_field": _("The custom field cannot be changed.")},
+                )
+
+
 class CustomFieldInstance(SoftDeleteModel):
     """
     A single instance of a field, attached to a CustomField for the name and type
@@ -1311,6 +1365,7 @@ class CustomFieldInstance(SoftDeleteModel):
         CustomField.FieldDataType.MONETARY: "value_monetary",
         CustomField.FieldDataType.DOCUMENTLINK: "value_document_ids",
         CustomField.FieldDataType.SELECT: "value_select",
+        CustomField.FieldDataType.MANAGED_SELECT: "value_managed_select_id",
         CustomField.FieldDataType.LONG_TEXT: "value_long_text",
     }
 
@@ -1379,6 +1434,14 @@ class CustomFieldInstance(SoftDeleteModel):
 
     value_select = models.CharField(null=True, max_length=16)
 
+    value_managed_select = models.ForeignKey(
+        CustomFieldChoice,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="field_instances",
+    )
+
     value_long_text = models.TextField(null=True)
 
     class Meta:
@@ -1434,6 +1497,8 @@ class CustomFieldInstance(SoftDeleteModel):
                 (o["label"] for o in options if o.get("id") == self.value),
                 None,
             )
+        if self.field.data_type == CustomField.FieldDataType.MANAGED_SELECT:
+            return self.value_managed_select.name
         return str(self.value)
 
 
@@ -1448,6 +1513,7 @@ if settings.AUDIT_LOG_ENABLED:
     auditlog.register(DocumentType)
     auditlog.register(Note)
     auditlog.register(CustomField)
+    auditlog.register(CustomFieldChoice)
     auditlog.register(CustomFieldInstance)
 
 

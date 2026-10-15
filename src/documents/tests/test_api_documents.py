@@ -2597,6 +2597,7 @@ class TestDocumentApi(DirectoriesMixin, ConsumeTaskMixin, APITestCase):
                 "tags": [],
                 "document_types": [],
                 "storage_paths": [],
+                "custom_fields": {},
                 "dates": [],
             },
         )
@@ -2623,6 +2624,7 @@ class TestDocumentApi(DirectoriesMixin, ConsumeTaskMixin, APITestCase):
                 "tags": [],
                 "document_types": [],
                 "storage_paths": [],
+                "custom_fields": {},
                 "dates": [],
             },
         )
@@ -2659,6 +2661,7 @@ class TestDocumentApi(DirectoriesMixin, ConsumeTaskMixin, APITestCase):
                 "tags": [56, 123],
                 "document_types": [23],
                 "storage_paths": [99, 77],
+                "custom_fields": {},
                 "dates": ["2022-04-12"],
             },
         )
@@ -2737,6 +2740,7 @@ class TestDocumentApi(DirectoriesMixin, ConsumeTaskMixin, APITestCase):
                 "tags": [56, 123],
                 "document_types": [23],
                 "storage_paths": [99, 77],
+                "custom_fields": {},
                 "dates": ["2022-04-12"],
             },
         )

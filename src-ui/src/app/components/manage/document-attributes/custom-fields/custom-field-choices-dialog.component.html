@@ -1,0 +1,54 @@
+<div class="modal-header">
+  <h4 class="modal-title" i18n>Values for {{customField.name}}</h4>
+  <button type="button" class="btn-close" aria-label="Close" (click)="activeModal.dismiss()"></button>
+</div>
+<div class="modal-body">
+  <div class="d-flex gap-2 mb-3">
+    <input class="form-control" type="search" [(ngModel)]="search" (keyup.enter)="page = 1; reload()" placeholder="Search values" i18n-placeholder>
+    <button class="btn btn-outline-secondary" type="button" (click)="page = 1; reload()" i18n>Search</button>
+    <button class="btn btn-primary" type="button" (click)="edit()" *pngxIfPermissions="{ action: PermissionAction.Add, type: PermissionType.CustomFieldChoice }">
+      <i-bs name="plus-circle" class="me-1"></i-bs><ng-container i18n>Add value</ng-container>
+    </button>
+  </div>
+  <div class="table-responsive border rounded">
+    <table class="table table-striped align-middle mb-0">
+      <thead>
+        <tr>
+          <th class="fw-normal" i18n>Name</th>
+          <th class="fw-normal" i18n>Matching</th>
+          <th class="fw-normal" i18n>Owner</th>
+          <th class="fw-normal" i18n>Permissions</th>
+          <th class="fw-normal" i18n>Documents</th>
+          <th class="fw-normal" i18n>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (choice of choices; track choice.id) {
+          <tr>
+            <td><button class="btn btn-link p-0 text-start" type="button" [disabled]="!choice.user_can_change" (click)="edit(choice)">{{choice.name}}</button></td>
+            <td>{{getMatching(choice)}}</td>
+            <td>{{choice.owner === null || choice.owner === undefined ? '—' : choice.owner}}</td>
+            <td>{{getAccess(choice)}}</td>
+            <td>{{choice.document_count ?? 0}}</td>
+            <td>
+              <div class="btn-toolbar gap-1 flex-nowrap">
+                <a class="btn btn-sm btn-outline-secondary" [routerLink]="getDocumentFilterUrl(choice)" (click)="activeModal.close()" i18n>Documents</a>
+                <button class="btn btn-sm btn-outline-secondary" type="button" [disabled]="!choice.user_can_change" (click)="edit(choice)" i18n>Edit</button>
+                <button class="btn btn-sm btn-outline-danger" type="button" [disabled]="!choice.user_can_change" (click)="delete(choice)" i18n>Delete</button>
+              </div>
+            </td>
+          </tr>
+        }
+        @if (!loading && choices.length === 0) {
+          <tr><td colspan="6" class="text-muted" i18n>No values defined.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  @if (count > pageSize) {
+    <ngb-pagination class="d-flex justify-content-end mt-3" [collectionSize]="count" [pageSize]="pageSize" [(page)]="page" (pageChange)="reload()"></ngb-pagination>
+  }
+</div>
+<div class="modal-footer">
+  <button class="btn btn-outline-secondary" type="button" (click)="activeModal.close()" i18n>Close</button>
+</div>

@@ -28,6 +28,9 @@
                   <i-bs name="three-dots-vertical"></i-bs>
                 </button>
                 <div ngbDropdownMenu aria-labelledby="actionsMenuMobile">
+                  @if (field.data_type === CustomFieldDataType.ManagedSelect) {
+                    <button (click)="manageChoices(field)" ngbDropdownItem i18n>Values</button>
+                  }
                   <button (click)="editField(field)" *pngxIfPermissions="{ action: PermissionAction.Change, type: PermissionType.CustomField }" ngbDropdownItem i18n>Edit</button>
                   <button class="text-danger" (click)="deleteField(field)" *pngxIfPermissions="{ action: PermissionAction.Delete, type: PermissionType.CustomField }" ngbDropdownItem i18n>Delete</button>
                   @if (field.document_count > 0) {
@@ -43,6 +46,11 @@
               </div>
             </div>
             <div class="btn-group d-none d-sm-inline-block">
+              @if (field.data_type === CustomFieldDataType.ManagedSelect) {
+                <button class="btn btn-sm btn-outline-primary" type="button" (click)="manageChoices(field)">
+                  <i-bs width="1em" height="1em" name="list" class="me-1"></i-bs><ng-container i18n>Values</ng-container>
+                </button>
+              }
               <button *pngxIfPermissions="{ action: PermissionAction.Change, type: PermissionType.CustomField }" class="btn btn-sm btn-outline-secondary" type="button" (click)="editField(field)">
                 <i-bs width="1em" height="1em" name="pencil" class="me-1"></i-bs><ng-container i18n>Edit</ng-container>
               </button>

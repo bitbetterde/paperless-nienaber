@@ -43,6 +43,7 @@ from documents.management.commands.base import PaperlessCommand
 from documents.management.commands.mixins import CryptMixin
 from documents.models import Correspondent
 from documents.models import CustomField
+from documents.models import CustomFieldChoice
 from documents.models import CustomFieldInstance
 from documents.models import Document
 from documents.models import DocumentBarcode
@@ -353,6 +354,7 @@ class Command(CryptMixin, PaperlessCommand):
             "workflow_webhook_actions": WorkflowActionWebhook.objects.all(),
             "workflows": Workflow.objects.all(),
             "custom_fields": CustomField.objects.all(),
+            "custom_field_choices": CustomFieldChoice.objects.all(),
             "custom_field_instances": CustomFieldInstance.global_objects.all(),
             "document_barcodes": DocumentBarcode.objects.all(),
             "app_configs": ApplicationConfiguration.objects.all(),

@@ -114,6 +114,11 @@ export const CUSTOM_FIELD_QUERY_OPERATOR_GROUPS_BY_TYPE = {
     CustomFieldQueryOperatorGroups.Exact,
     CustomFieldQueryOperatorGroups.Subset,
   ],
+  [CustomFieldDataType.ManagedSelect]: [
+    CustomFieldQueryOperatorGroups.Basic,
+    CustomFieldQueryOperatorGroups.Exact,
+    CustomFieldQueryOperatorGroups.Subset,
+  ],
   [CustomFieldDataType.LongText]: [
     CustomFieldQueryOperatorGroups.Basic,
     CustomFieldQueryOperatorGroups.String,

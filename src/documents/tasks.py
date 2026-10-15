@@ -43,6 +43,7 @@ from documents.file_handling import create_source_path_directory
 from documents.file_handling import generate_unique_filename
 from documents.matching import prefilter_documents_by_workflowtrigger
 from documents.models import Correspondent
+from documents.models import CustomFieldChoice
 from documents.models import CustomFieldInstance
 from documents.models import Document
 from documents.models import DocumentBarcode
@@ -156,6 +157,9 @@ def train_classifier(
         and not DocumentType.objects.filter(matching_algorithm=Tag.MATCH_AUTO).exists()
         and not Correspondent.objects.filter(matching_algorithm=Tag.MATCH_AUTO).exists()
         and not StoragePath.objects.filter(matching_algorithm=Tag.MATCH_AUTO).exists()
+        and not CustomFieldChoice.objects.filter(
+            matching_algorithm=Tag.MATCH_AUTO,
+        ).exists()
     ):
         result = "No automatic matching items, not training"
         logger.info(result)

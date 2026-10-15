@@ -13,6 +13,7 @@ from documents.management.commands.base import PaperlessCommand
 from documents.models import Document
 from documents.signals.handlers import set_correspondent
 from documents.signals.handlers import set_document_type
+from documents.signals.handlers import set_managed_selects
 from documents.signals.handlers import set_storage_path
 from documents.signals.handlers import set_tags
 
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     from rich.console import RenderableType
 
     from documents.models import Correspondent
+    from documents.models import CustomFieldChoice
     from documents.models import DocumentType
     from documents.models import StoragePath
     from documents.models import Tag
@@ -40,6 +42,7 @@ class RetaggerStats:
     tags_added: int = 0
     tags_removed: int = 0
     storage_paths: int = 0
+    managed_selects: int = 0
     documents_processed: int = 0
 
 
@@ -56,6 +59,7 @@ class DocumentSuggestion:
     tags_to_add: frozenset[Tag] = field(default_factory=frozenset)
     tags_to_remove: frozenset[Tag] = field(default_factory=frozenset)
     storage_path: StoragePath | None = None
+    managed_selects: dict[int, CustomFieldChoice | None] = field(default_factory=dict)
 
     @property
     def has_suggestions(self) -> bool:
@@ -64,7 +68,8 @@ class DocumentSuggestion:
             or self.document_type is not None
             or self.tags_to_add
             or self.tags_to_remove
-            or self.storage_path is not None,
+            or self.storage_path is not None
+            or self.managed_selects,
         )
 
 
@@ -83,6 +88,7 @@ def _build_stats_table(stats: RetaggerStats, *, suggest: bool) -> Table:
     table.add_column("Tags (+)")
     table.add_column("Tags (-)")
     table.add_column("Storage Paths")
+    table.add_column("Managed Selects")
 
     verb = "would set" if suggest else "set"
 
@@ -93,6 +99,7 @@ def _build_stats_table(stats: RetaggerStats, *, suggest: bool) -> Table:
         f"+{stats.tags_added}",
         f"-{stats.tags_removed}",
         f"{stats.storage_paths} {verb}",
+        f"{stats.managed_selects} {verb}",
     )
 
     return table
@@ -119,6 +126,7 @@ def _build_suggestion_table(
     table.add_column("Doc Type")
     table.add_column("Tags")
     table.add_column("Storage Path")
+    table.add_column("Managed Selects")
 
     for suggestion in suggestions:
         if not suggestion.has_suggestions:
@@ -146,6 +154,13 @@ def _build_suggestion_table(
             str(suggestion.document_type) if suggestion.document_type else "-",
             tag_cell,
             str(suggestion.storage_path) if suggestion.storage_path else "-",
+            ", ".join(
+                f"{choice.custom_field.name}: {choice.name}"
+                if choice is not None
+                else f"Field {field_id}: cleared"
+                for field_id, choice in suggestion.managed_selects.items()
+            )
+            or "-",
         )
 
     return table
@@ -168,6 +183,7 @@ def _build_summary_table(stats: RetaggerStats) -> Table:
     table.add_row("Tags added", str(stats.tags_added))
     table.add_row("Tags removed", str(stats.tags_removed))
     table.add_row("Storage paths set", str(stats.storage_paths))
+    table.add_row("Managed-select values set", str(stats.managed_selects))
 
     return table
 
@@ -189,6 +205,9 @@ class Command(PaperlessCommand):
         parser.add_argument("-T", "--tags", default=False, action="store_true")
         parser.add_argument("-t", "--document_type", default=False, action="store_true")
         parser.add_argument("-s", "--storage_path", default=False, action="store_true")
+        parser.add_argument(
+            "-m", "--managed-selects", default=False, action="store_true",
+        )
         parser.add_argument("-i", "--inbox-only", default=False, action="store_true")
         parser.add_argument(
             "--use-first",
@@ -237,11 +256,20 @@ class Command(PaperlessCommand):
         do_document_type: bool = options["document_type"]
         do_tags: bool = options["tags"]
         do_storage_path: bool = options["storage_path"]
+        do_managed_selects: bool = options["managed_selects"]
 
-        if not any([do_correspondent, do_document_type, do_tags, do_storage_path]):
+        if not any(
+            [
+                do_correspondent,
+                do_document_type,
+                do_tags,
+                do_storage_path,
+                do_managed_selects,
+            ],
+        ):
             self.console.print(
                 "[yellow]No classifier targets specified. "
-                "Use -c, -T, -t, or -s to select what to retag.[/yellow]",
+                "Use -c, -T, -t, -s, or -m to select what to retag.[/yellow]",
             )
             return
 
@@ -326,6 +354,20 @@ class Command(PaperlessCommand):
                     if storage_path is not None:
                         stats.storage_paths += 1
                         suggestion.storage_path = storage_path
+
+                if do_managed_selects:
+                    managed_selects = set_managed_selects(
+                        None,
+                        document,
+                        classifier=classifier,
+                        replace=overwrite,
+                        use_first=use_first,
+                        dry_run=suggest,
+                    )
+                    stats.managed_selects += sum(
+                        choice is not None for choice in managed_selects.values()
+                    )
+                    suggestion.managed_selects = managed_selects
 
                 stats.documents_processed += 1
 

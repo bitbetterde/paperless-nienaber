@@ -1,0 +1,19 @@
+<pngx-input-select
+  [(ngModel)]="value"
+  [ngModelOptions]="{standalone: true}"
+  (ngModelChange)="onChange(value)"
+  [title]="title"
+  [items]="choices"
+  [allowNull]="true"
+  [horizontal]="horizontal"
+  [disabled]="disabled"
+  [removable]="removable"
+  (removed)="removed.emit(this)"
+  [error]="error"
+  [suggestions]="suggestions"
+  [showFilter]="showFilter"
+  (filterDocuments)="filterDocuments.emit($event)"
+  [hideAddButton]="!canCreate"
+  [disableCreateNew]="!canCreate"
+  (createNew)="createChoice($event)">
+</pngx-input-select>

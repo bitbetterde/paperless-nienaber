@@ -68,6 +68,13 @@
           [allowNull]="true"
           [horizontal]="true"></pngx-input-select>
         }
+        @case (CustomFieldDataType.ManagedSelect) {
+          <pngx-input-managed-select [(ngModel)]="value[fieldId]" [ngModelOptions]="{standalone: true}" (ngModelChange)="onChange(value)"
+          [title]="getCustomField(fieldId)?.name"
+          [customField]="getCustomField(fieldId)"
+          class="flex-grow-1"
+          [horizontal]="true"></pngx-input-managed-select>
+        }
         @case (CustomFieldDataType.LongText) {
           <pngx-input-textarea [(ngModel)]="value[fieldId]" [ngModelOptions]="{standalone: true}" (ngModelChange)="onChange(value)"
           [title]="getCustomField(fieldId)?.name"

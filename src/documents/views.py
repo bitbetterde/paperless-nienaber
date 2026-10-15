@@ -132,6 +132,7 @@ from documents.data_models import DocumentMetadataOverrides
 from documents.data_models import DocumentSource
 from documents.file_handling import format_filename
 from documents.filters import CorrespondentFilterSet
+from documents.filters import CustomFieldChoiceFilterSet
 from documents.filters import CustomFieldFilterSet
 from documents.filters import DocumentFilterSet
 from documents.filters import DocumentsOrderingFilter
@@ -147,11 +148,13 @@ from documents.filters import TitleContentFilter
 from documents.mail import EmailAttachment
 from documents.mail import send_email
 from documents.matching import match_correspondents
+from documents.matching import match_custom_field_choices
 from documents.matching import match_document_types
 from documents.matching import match_storage_paths
 from documents.matching import match_tags
 from documents.models import Correspondent
 from documents.models import CustomField
+from documents.models import CustomFieldChoice
 from documents.models import CustomFieldInstance
 from documents.models import Document
 from documents.models import DocumentType
@@ -191,6 +194,7 @@ from documents.serialisers import BulkDownloadSerializer
 from documents.serialisers import BulkEditObjectsSerializer
 from documents.serialisers import BulkEditSerializer
 from documents.serialisers import CorrespondentSerializer
+from documents.serialisers import CustomFieldChoiceSerializer
 from documents.serialisers import CustomFieldSerializer
 from documents.serialisers import DeleteDocumentsSerializer
 from documents.serialisers import DocumentBarcodeSerializer
@@ -626,6 +630,37 @@ class CorrespondentViewSet(
         return super().retrieve(request, *args, **kwargs)
 
 
+@extend_schema_view(
+    **generate_object_with_permissions_schema(CustomFieldChoiceSerializer),
+)
+class CustomFieldChoiceViewSet(
+    PermissionsAwareDocumentCountMixin,
+    ModelViewSet[CustomFieldChoice],
+):
+    model = CustomFieldChoice
+    serializer_class = CustomFieldChoiceSerializer
+    pagination_class = StandardPagination
+    permission_classes = (IsAuthenticated, PaperlessObjectPermissions)
+    filter_backends = (
+        DjangoFilterBackend,
+        OrderingFilter,
+        PermittedObjectsFilter,
+    )
+    filterset_class = CustomFieldChoiceFilterSet
+    ordering_fields = (
+        "name",
+        "matching_algorithm",
+        "match",
+        "document_count",
+    )
+    document_count_through = CustomFieldInstance
+    document_count_source_field = "value_managed_select_id"
+    queryset = CustomFieldChoice.objects.select_related(
+        "owner",
+        "custom_field",
+    ).order_by(Lower("name"))
+
+
 @extend_schema_view(**generate_object_with_permissions_schema(TagSerializer))
 class TagViewSet(PermissionsAwareDocumentCountMixin, ModelViewSet[Tag]):
     model = Tag
@@ -896,6 +931,11 @@ class EmailDocumentDetailSchema(EmailSerializer):
                     ),
                     "storage_paths": serializers.ListField(
                         child=serializers.IntegerField(),
+                    ),
+                    "custom_fields": serializers.DictField(
+                        child=serializers.ListField(
+                            child=serializers.IntegerField(),
+                        ),
                     ),
                     "dates": serializers.ListField(child=serializers.CharField()),
                 },
@@ -1202,7 +1242,10 @@ class DocumentViewSet(
             "tags",
             Prefetch(
                 "custom_fields",
-                queryset=CustomFieldInstance.objects.select_related("field"),
+                queryset=CustomFieldInstance.objects.select_related(
+                    "field",
+                    "value_managed_select",
+                ),
             ),
             # NotesSerializer nests the author, this avoids query per note
             Prefetch("notes", queryset=Note.objects.select_related("user")),
@@ -1598,6 +1641,14 @@ class DocumentViewSet(
             "storage_paths": [
                 dt.id for dt in match_storage_paths(doc, classifier, request.user)
             ],
+            "custom_fields": {
+                str(field_id): [choice.id for choice in choices]
+                for field_id, choices in match_custom_field_choices(
+                    doc,
+                    classifier,
+                    request.user,
+                ).items()
+            },
             "dates": [date.strftime("%Y-%m-%d") for date in dates if date is not None],
         }
 

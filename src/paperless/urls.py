@@ -21,6 +21,7 @@ from documents.views import BulkEditObjectsView
 from documents.views import BulkEditView
 from documents.views import ChatStreamingView
 from documents.views import CorrespondentViewSet
+from documents.views import CustomFieldChoiceViewSet
 from documents.views import CustomFieldViewSet
 from documents.views import DeleteDocumentsView
 from documents.views import DocumentTypeViewSet
@@ -90,6 +91,7 @@ api_router.register(r"workflow_triggers", WorkflowTriggerViewSet)
 api_router.register(r"workflow_actions", WorkflowActionViewSet)
 api_router.register(r"workflows", WorkflowViewSet)
 api_router.register(r"custom_fields", CustomFieldViewSet)
+api_router.register(r"custom_field_choices", CustomFieldChoiceViewSet)
 api_router.register(r"config", ApplicationConfigurationViewSet)
 api_router.register(r"processed_mail", ProcessedMailViewSet)
 

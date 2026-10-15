@@ -56,6 +56,11 @@
                 [items]="field.extra_data.select_options" bindLabel="label" [allowNull]="true" [horizontal]="true">
               </pngx-input-select>
             }
+            @case (CustomFieldDataType.ManagedSelect) {
+              <pngx-input-managed-select formControlName="{{field.id}}" class="w-100" [title]="field.name"
+                [customField]="field" [horizontal]="true">
+              </pngx-input-managed-select>
+            }
             @case (CustomFieldDataType.LongText) {
               <pngx-input-textarea formControlName="{{field.id}}" class="w-100" [title]="field.name" [horizontal]="true">
               </pngx-input-textarea>

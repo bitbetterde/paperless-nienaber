@@ -27,6 +27,7 @@ import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { first, Subject, Subscription, takeUntil } from 'rxjs'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
+import { CustomFieldChoice } from 'src/app/data/custom-field-choice'
 import {
   CUSTOM_FIELD_QUERY_MAX_ATOMS,
   CUSTOM_FIELD_QUERY_MAX_DEPTH,
@@ -38,6 +39,7 @@ import {
   CustomFieldQueryOperatorGroups,
 } from 'src/app/data/custom-field-query'
 import { CustomFieldsService } from 'src/app/services/rest/custom-fields.service'
+import { CustomFieldChoiceService } from 'src/app/services/rest/custom-field-choice.service'
 import {
   CustomFieldQueryAtom,
   CustomFieldQueryElement,
@@ -221,6 +223,8 @@ export class CustomFieldQueriesModel {
 })
 export class CustomFieldsQueryDropdownComponent extends LoadingComponentWithPermissions {
   protected customFieldsService = inject(CustomFieldsService)
+  private readonly customFieldChoiceService = inject(CustomFieldChoiceService)
+  private readonly managedChoices = new Map<number, CustomFieldChoice[]>()
   private readonly locale = inject(LOCALE_ID)
 
   public CustomFieldQueryComponentType = CustomFieldQueryElementType
@@ -349,6 +353,18 @@ export class CustomFieldsQueryDropdownComponent extends LoadingComponentWithPerm
       .pipe(first(), takeUntil(this.unsubscribeNotifier))
       .subscribe((result) => {
         this.customFields.set(result.results)
+        result.results
+          .filter(
+            (field) => field.data_type === CustomFieldDataType.ManagedSelect
+          )
+          .forEach((field) => {
+            this.customFieldChoiceService
+              .list(1, 100000, 'name', false, { custom_field: field.id })
+              .pipe(takeUntil(this.unsubscribeNotifier))
+              .subscribe((choices) => {
+                this.managedChoices.set(field.id, choices.results)
+              })
+          })
       })
   }
 
@@ -397,6 +413,10 @@ export class CustomFieldsQueryDropdownComponent extends LoadingComponentWithPerm
       return field.extra_data['select_options']
     }
     return []
+  }
+
+  getManagedOptionsForField(fieldID: number): CustomFieldChoice[] {
+    return this.managedChoices.get(fieldID) ?? []
   }
 
   setMonetaryValue(atom: CustomFieldQueryAtom, value: string) {

@@ -970,8 +970,9 @@ class ConsumerPlugin(
                 args = {
                     "field": field,
                     "document": document,
-                    value_field_name: self.metadata.custom_fields.get(field.id, None),
                 }
+                value = self.metadata.custom_fields.get(field.id, None)
+                args[value_field_name] = value
                 CustomFieldInstance.objects.create(**args)  # adds to document
 
         self._store_barcodes(document)

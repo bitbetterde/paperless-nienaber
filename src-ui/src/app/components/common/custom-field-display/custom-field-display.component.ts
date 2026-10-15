@@ -10,10 +10,12 @@ import {
 import { NgbTooltipModule } from '@ng-bootstrap/ng-bootstrap'
 import { takeUntil } from 'rxjs'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
+import { CustomFieldChoice } from 'src/app/data/custom-field-choice'
 import { DisplayField, Document } from 'src/app/data/document'
 import { Results } from 'src/app/data/results'
 import { CustomDatePipe } from 'src/app/pipes/custom-date.pipe'
 import { CustomFieldsService } from 'src/app/services/rest/custom-fields.service'
+import { CustomFieldChoiceService } from 'src/app/services/rest/custom-field-choice.service'
 import { DocumentService } from 'src/app/services/rest/document.service'
 import { LoadingComponentWithPermissions } from '../../loading-component/loading.component'
 
@@ -29,6 +31,7 @@ export class CustomFieldDisplayComponent
 {
   private customFieldService = inject(CustomFieldsService)
   private documentService = inject(DocumentService)
+  private choiceService = inject(CustomFieldChoiceService)
   private changeDetector = inject(ChangeDetectorRef)
 
   CustomFieldDataType = CustomFieldDataType
@@ -67,6 +70,7 @@ export class CustomFieldDisplayComponent
   currency: string
 
   private customFields: CustomField[] = []
+  private managedChoices: CustomFieldChoice[] = []
 
   public field: CustomField
 
@@ -82,6 +86,10 @@ export class CustomFieldDisplayComponent
     this.customFieldService.listAll().subscribe((r) => {
       this.customFields = r.results
       this.init()
+      this.changeDetector.markForCheck()
+    })
+    this.choiceService.listAll('name').subscribe((r) => {
+      this.managedChoices = r.results
       this.changeDetector.markForCheck()
     })
   }
@@ -130,5 +138,9 @@ export class CustomFieldDisplayComponent
 
   public getSelectValue(field: CustomField, id: string): string {
     return field.extra_data.select_options?.find((o) => o.id === id)?.label
+  }
+
+  public getManagedSelectValue(id: number): string {
+    return this.managedChoices.find((choice) => choice.id === id)?.name ?? $localize`Private`
   }
 }

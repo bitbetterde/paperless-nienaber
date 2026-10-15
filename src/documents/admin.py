@@ -5,6 +5,7 @@ from treenode.admin import TreeNodeModelAdmin
 
 from documents.models import Correspondent
 from documents.models import CustomField
+from documents.models import CustomFieldChoice
 from documents.models import CustomFieldInstance
 from documents.models import Document
 from documents.models import DocumentType
@@ -234,6 +235,13 @@ class CustomFieldInstancesAdmin(GuardedModelAdmin):
         )
 
 
+class CustomFieldChoiceAdmin(GuardedModelAdmin):
+    list_display = ("name", "custom_field", "match", "matching_algorithm", "owner")
+    list_filter = ("custom_field", "matching_algorithm", "owner")
+    list_editable = ("match", "matching_algorithm")
+    search_fields = ("name", "match", "custom_field__name")
+
+
 admin.site.register(Correspondent, CorrespondentAdmin)
 admin.site.register(Tag, TagAdmin)
 admin.site.register(DocumentType, DocumentTypeAdmin)
@@ -245,6 +253,7 @@ admin.site.register(Note, NotesAdmin)
 admin.site.register(ShareLink, ShareLinksAdmin)
 admin.site.register(ShareLinkBundle, ShareLinkBundleAdmin)
 admin.site.register(CustomField, CustomFieldsAdmin)
+admin.site.register(CustomFieldChoice, CustomFieldChoiceAdmin)
 admin.site.register(CustomFieldInstance, CustomFieldInstancesAdmin)
 
 if settings.AUDIT_LOG_ENABLED:

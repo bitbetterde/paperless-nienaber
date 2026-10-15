@@ -22,6 +22,7 @@ import { CheckComponent } from '../check/check.component'
 import { DateComponent } from '../date/date.component'
 import { DocumentLinkComponent } from '../document-link/document-link.component'
 import { MonetaryComponent } from '../monetary/monetary.component'
+import { ManagedSelectComponent } from '../managed-select/managed-select.component'
 import { NumberComponent } from '../number/number.component'
 import { SelectComponent } from '../select/select.component'
 import { TextComponent } from '../text/text.component'
@@ -47,6 +48,7 @@ import { UrlComponent } from '../url/url.component'
     UrlComponent,
     SelectComponent,
     MonetaryComponent,
+    ManagedSelectComponent,
     CheckComponent,
     NgSelectModule,
     FormsModule,

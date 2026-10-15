@@ -34,6 +34,8 @@ from documents.caching import CACHE_50_MINUTES
 from documents.caching import CLASSIFIER_HASH_KEY
 from documents.caching import CLASSIFIER_MODIFIED_KEY
 from documents.caching import CLASSIFIER_VERSION_KEY
+from documents.models import CustomFieldChoice
+from documents.models import CustomFieldInstance
 from documents.models import Document
 from documents.models import MatchingModel
 from documents.models import Tag
@@ -203,7 +205,8 @@ class DocumentClassifier:
     # v11 - Use sample_weight for balanced training; predict_proba with threshold;
     #       drop training-only MLP state before saving
     #       Tantivy text preprocessing
-    FORMAT_VERSION = 11
+    # v12 - Added per-custom-field managed-select classifiers
+    FORMAT_VERSION = 12
 
     HMAC_SIZE = 32  # SHA-256 digest length
 
@@ -220,6 +223,7 @@ class DocumentClassifier:
         self.correspondent_classifier = None
         self.document_type_classifier = None
         self.storage_path_classifier = None
+        self.custom_field_choice_classifiers = {}
 
     def _update_data_vectorizer_hash(self) -> None:
         self.data_vectorizer_hash = sha256(
@@ -282,6 +286,7 @@ class DocumentClassifier:
                     self.correspondent_classifier,
                     self.document_type_classifier,
                     self.storage_path_classifier,
+                    self.custom_field_choice_classifiers,
                 ) = pickle.loads(data)
             except Exception as err:
                 raise ClassifierModelCorruptError from err
@@ -323,6 +328,7 @@ class DocumentClassifier:
                     self.correspondent_classifier,
                     self.document_type_classifier,
                     self.storage_path_classifier,
+                    self.custom_field_choice_classifiers,
                 ),
                 f,
                 protocol=pickle.HIGHEST_PROTOCOL,
@@ -348,6 +354,17 @@ class DocumentClassifier:
         labels_correspondent = []
         labels_document_type = []
         labels_storage_path = []
+        managed_select_field_ids = list(
+            CustomFieldChoice.objects.filter(
+                matching_algorithm=MatchingModel.MATCH_AUTO,
+            )
+            .order_by("custom_field_id")
+            .values_list("custom_field_id", flat=True)
+            .distinct(),
+        )
+        labels_custom_field_choices: dict[int, list[int]] = {
+            field_id: [] for field_id in managed_select_field_ids
+        }
         # Content is fetched separately later, for exactly these documents in this
         # order, so it never all has to be in memory at once
         doc_pks: list[int] = []
@@ -369,6 +386,14 @@ class DocumentClassifier:
                     .order_by("pk")
                     .only("pk"),
                     to_attr="auto_tags",
+                ),
+                Prefetch(
+                    "custom_fields",
+                    queryset=CustomFieldInstance.objects.filter(
+                        field_id__in=managed_select_field_ids,
+                        value_managed_select__matching_algorithm=MatchingModel.MATCH_AUTO,
+                    ).select_related("value_managed_select"),
+                    to_attr="auto_managed_selects",
                 ),
             )
             .iterator(chunk_size=2000)
@@ -403,6 +428,16 @@ class DocumentClassifier:
             hasher.update(y.to_bytes(4, "little", signed=True))
             labels_storage_path.append(y)
 
+            managed_values = {
+                instance.field_id: instance.value_managed_select_id
+                for instance in doc.auto_managed_selects
+            }
+            for field_id in managed_select_field_ids:
+                choice_id = managed_values.get(field_id, -1)
+                labels_custom_field_choices[field_id].append(choice_id)
+                hasher.update(field_id.to_bytes(8, "little", signed=False))
+                hasher.update(choice_id.to_bytes(8, "little", signed=True))
+
         labels_tags_unique = {tag for tags in labels_tags for tag in tags}
 
         num_tags = len(labels_tags_unique)
@@ -434,10 +469,15 @@ class DocumentClassifier:
         num_correspondents: int = len(set(labels_correspondent) | {-1}) - 1
         num_document_types: int = len(set(labels_document_type) | {-1}) - 1
         num_storage_paths: int = len(set(labels_storage_path) | {-1}) - 1
+        num_custom_field_choices = {
+            field_id: len(set(labels) | {-1}) - 1
+            for field_id, labels in labels_custom_field_choices.items()
+        }
 
         logger.debug(
             f"{len(doc_pks)} documents, {num_tags} tag(s), {num_correspondents} correspondent(s), "
-            f"{num_document_types} document type(s). {num_storage_paths} storage path(s)",
+            f"{num_document_types} document type(s), {num_storage_paths} storage path(s), "
+            f"{sum(num_custom_field_choices.values())} managed-select choice(s)",
         )
 
         from sklearn.feature_extraction.text import CountVectorizer
@@ -567,6 +607,28 @@ class DocumentClassifier:
                 "There are no storage paths. Not training storage path classifier.",
             )
 
+        self.custom_field_choice_classifiers = {}
+        for field_id, labels in labels_custom_field_choices.items():
+            choice_count = num_custom_field_choices[field_id]
+            if choice_count == 0:
+                continue
+            logger.debug(
+                "Training managed-select classifier for custom field %s...",
+                field_id,
+            )
+            notify(
+                f"Training managed-select classifier for field {field_id} "
+                f"({choice_count} choice(s))...",
+            )
+            choice_classifier = MLPClassifier(tol=0.01, random_state=0)
+            choice_classifier.fit(
+                data_vectorized,
+                labels,
+                sample_weight=compute_sample_weight("balanced", labels),
+            )
+            self._strip_training_state(choice_classifier)
+            self.custom_field_choice_classifiers[field_id] = choice_classifier
+
         self.last_doc_change_time = latest_doc_change
         self.last_auto_type_hash = hasher.digest()
         self._update_data_vectorizer_hash()
@@ -669,4 +731,15 @@ class DocumentClassifier:
                 settings.CLASSIFIER_MATCH_THRESHOLD,
             )
             return predicted_id
+        return None
+
+    def predict_custom_field_choice(self, field_id: int, content: str) -> int | None:
+        classifier = self.custom_field_choice_classifiers.get(field_id)
+        if classifier:
+            X = self._vectorize(content)
+            return _predict_with_threshold(
+                classifier,
+                X,
+                settings.CLASSIFIER_MATCH_THRESHOLD,
+            )
         return None

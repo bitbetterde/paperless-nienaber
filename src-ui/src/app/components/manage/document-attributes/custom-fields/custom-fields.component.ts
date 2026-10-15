@@ -11,7 +11,7 @@ import { ConfirmDialogComponent } from 'src/app/components/common/confirm-dialog
 import { CustomFieldEditDialogComponent } from 'src/app/components/common/edit-dialog/custom-field-edit-dialog/custom-field-edit-dialog.component'
 import { EditDialogMode } from 'src/app/components/common/edit-dialog/edit-dialog.component'
 import { LoadingComponentWithPermissions } from 'src/app/components/loading-component/loading.component'
-import { CustomField, DATA_TYPE_LABELS } from 'src/app/data/custom-field'
+import { CustomField, CustomFieldDataType, DATA_TYPE_LABELS } from 'src/app/data/custom-field'
 import {
   CustomFieldQueryLogicalOperator,
   CustomFieldQueryOperator,
@@ -25,6 +25,7 @@ import { DocumentService } from 'src/app/services/rest/document.service'
 import { SavedViewService } from 'src/app/services/rest/saved-view.service'
 import { SettingsService } from 'src/app/services/settings.service'
 import { ToastService } from 'src/app/services/toast.service'
+import { CustomFieldChoicesDialogComponent } from './custom-field-choices-dialog.component'
 
 @Component({
   selector: 'pngx-custom-fields',
@@ -52,6 +53,7 @@ export class CustomFieldsComponent
   private readonly savedViewService = inject(SavedViewService)
 
   readonly fields = signal<CustomField[]>([])
+  readonly CustomFieldDataType = CustomFieldDataType
 
   ngOnInit() {
     this.reload()
@@ -124,6 +126,13 @@ export class CustomFieldsComponent
         },
       })
     })
+  }
+
+  manageChoices(field: CustomField) {
+    const modal = this.modalService.open(CustomFieldChoicesDialogComponent, {
+      size: 'lg',
+    })
+    modal.componentInstance.customField = field
   }
 
   getDataType(field: CustomField): string {

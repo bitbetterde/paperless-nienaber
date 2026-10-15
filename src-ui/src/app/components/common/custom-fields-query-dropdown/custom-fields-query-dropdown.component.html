@@ -69,6 +69,19 @@
       [appendTo]="selectAppendTo"
       (mousedown)="$event.stopImmediatePropagation()"
     ></ng-select>
+  } @else if (getCustomFieldByID(atom.field)?.data_type === CustomFieldDataType.ManagedSelect) {
+    <ng-select #fieldSelects
+      class="paperless-input-select rounded-end"
+      [items]="getManagedOptionsForField(atom.field)"
+      bindLabel="name"
+      bindValue="id"
+      [(ngModel)]="atom.value"
+      [ngModelOptions]="{standalone: true}"
+      [disabled]="disabled"
+      [virtualScroll]="getManagedOptionsForField(atom.field)?.length > 100"
+      [appendTo]="selectAppendTo"
+      (mousedown)="$event.stopImmediatePropagation()"
+    ></ng-select>
   } @else if (getCustomFieldByID(atom.field)?.data_type === CustomFieldDataType.DocumentLink) {
     <pngx-input-document-link [(ngModel)]="atom.value" [ngModelOptions]="{standalone: true}" class="w-25 form-select doc-link-select p-0" placeholder="Search docs..." i18n-placeholder [minimal]="true" [appendTo]="selectAppendTo"></pngx-input-document-link>
   } @else if (getCustomFieldByID(atom.field)?.data_type === CustomFieldDataType.Monetary) {
