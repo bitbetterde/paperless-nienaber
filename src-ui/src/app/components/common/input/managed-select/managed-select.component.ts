@@ -38,7 +38,9 @@ export class ManagedSelectComponent extends AbstractInputComponent<number> {
   private readonly modalService = inject(NgbModal)
   private readonly permissionsService = inject(PermissionsService)
 
-  choices: CustomFieldChoice[] = []
+  // undefined until loaded: with an empty array the select would already turn
+  // the current value into a "Private" placeholder
+  choices: CustomFieldChoice[]
   private _customField: CustomField
 
   @Input()
@@ -74,6 +76,7 @@ export class ManagedSelectComponent extends AbstractInputComponent<number> {
           this.value = selectedId
           this.onChange(selectedId)
         }
+        this.changeDetector.markForCheck()
       })
   }
 
