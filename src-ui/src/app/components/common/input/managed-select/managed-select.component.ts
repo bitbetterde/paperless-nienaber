@@ -89,10 +89,9 @@ export class ManagedSelectComponent extends AbstractInputComponent<number> {
       custom_field: this.customField.id,
       name,
     }
-    modal.componentInstance.succeeded
-      .subscribe((choice: CustomFieldChoice) => {
-        this.choiceService.clearCache()
-        this.loadChoices(choice.id)
-      })
+    modal.componentInstance.succeeded.subscribe((choice: CustomFieldChoice) => {
+      this.choiceService.clearCache()
+      this.loadChoices(choice.id)
+    })
   }
 }
