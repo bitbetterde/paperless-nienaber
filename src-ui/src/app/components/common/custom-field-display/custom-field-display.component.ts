@@ -141,6 +141,9 @@ export class CustomFieldDisplayComponent
   }
 
   public getManagedSelectValue(id: number): string {
-    return this.managedChoices.find((choice) => choice.id === id)?.name ?? $localize`Private`
+    return (
+      this.managedChoices.find((choice) => choice.id === id)?.name ??
+      $localize`Private`
+    )
   }
 }

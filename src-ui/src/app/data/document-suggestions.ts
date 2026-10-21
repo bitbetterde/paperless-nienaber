@@ -45,13 +45,15 @@ export function mergeSuggestions(
       b.suggested_storage_paths
     ),
     custom_fields: Object.fromEntries(
-      [...new Set([
-        ...Object.keys(a.custom_fields ?? {}),
-        ...Object.keys(b.custom_fields ?? {}),
-      ])].map((fieldId) => [
+      [
+        ...new Set([
+          ...Object.keys(a.custom_fields ?? {}),
+          ...Object.keys(b.custom_fields ?? {}),
+        ]),
+      ].map((fieldId) => [
         fieldId,
         union(a.custom_fields?.[fieldId], b.custom_fields?.[fieldId]),
-      ]),
+      ])
     ),
     dates: union(a.dates, b.dates),
   }

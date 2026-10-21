@@ -11,7 +11,11 @@ import { ConfirmDialogComponent } from 'src/app/components/common/confirm-dialog
 import { CustomFieldEditDialogComponent } from 'src/app/components/common/edit-dialog/custom-field-edit-dialog/custom-field-edit-dialog.component'
 import { EditDialogMode } from 'src/app/components/common/edit-dialog/edit-dialog.component'
 import { LoadingComponentWithPermissions } from 'src/app/components/loading-component/loading.component'
-import { CustomField, CustomFieldDataType, DATA_TYPE_LABELS } from 'src/app/data/custom-field'
+import {
+  CustomField,
+  CustomFieldDataType,
+  DATA_TYPE_LABELS,
+} from 'src/app/data/custom-field'
 import {
   CustomFieldQueryLogicalOperator,
   CustomFieldQueryOperator,

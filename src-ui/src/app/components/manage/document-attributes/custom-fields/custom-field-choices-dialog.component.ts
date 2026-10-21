@@ -1,7 +1,11 @@
 import { Component, inject, Input, OnInit } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 import { RouterModule } from '@angular/router'
-import { NgbActiveModal, NgbModal, NgbPaginationModule } from '@ng-bootstrap/ng-bootstrap'
+import {
+  NgbActiveModal,
+  NgbModal,
+  NgbPaginationModule,
+} from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { ConfirmDialogComponent } from 'src/app/components/common/confirm-dialog/confirm-dialog.component'
 import { CustomFieldChoiceEditDialogComponent } from 'src/app/components/common/edit-dialog/custom-field-choice-edit-dialog/custom-field-choice-edit-dialog.component'
@@ -124,7 +128,9 @@ export class CustomFieldChoicesDialogComponent implements OnInit {
 
   getAccess(choice: CustomFieldChoice): string {
     if (choice.owner == null) return $localize`Unowned`
-    return choice.user_can_change ? $localize`Change access` : $localize`View access`
+    return choice.user_can_change
+      ? $localize`Change access`
+      : $localize`View access`
   }
 
   getDocumentFilterUrl(choice: CustomFieldChoice) {

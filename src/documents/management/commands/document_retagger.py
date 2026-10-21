@@ -206,7 +206,10 @@ class Command(PaperlessCommand):
         parser.add_argument("-t", "--document_type", default=False, action="store_true")
         parser.add_argument("-s", "--storage_path", default=False, action="store_true")
         parser.add_argument(
-            "-m", "--managed-selects", default=False, action="store_true",
+            "-m",
+            "--managed-selects",
+            default=False,
+            action="store_true",
         )
         parser.add_argument("-i", "--inbox-only", default=False, action="store_true")
         parser.add_argument(

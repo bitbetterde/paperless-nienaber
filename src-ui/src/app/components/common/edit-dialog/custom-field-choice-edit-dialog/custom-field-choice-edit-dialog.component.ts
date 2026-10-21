@@ -1,5 +1,10 @@
 import { Component, inject } from '@angular/core'
-import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms'
+import {
+  FormControl,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+} from '@angular/forms'
 import { CustomFieldChoice } from 'src/app/data/custom-field-choice'
 import { DEFAULT_MATCHING_ALGORITHM } from 'src/app/data/matching-model'
 import { IfOwnerDirective } from 'src/app/directives/if-owner.directive'
