@@ -1,0 +1,33 @@
+// the host sits between .modal-content and header/body, it has to pass the height on
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+// absolutely positioned so the viewers get the real size of the stretched column,
+// percentage heights don't resolve through the modal's flex layout
+.compare-preview {
+  position: relative;
+
+  > * {
+    position: absolute;
+    inset: 0;
+  }
+}
+
+.pdf-viewer-container {
+  padding: 8px;
+  background-color: gray;
+
+  pngx-pdf-viewer {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+// lets long titles truncate instead of pushing the zoom controls away
+.modal-title {
+  min-width: 0;
+}

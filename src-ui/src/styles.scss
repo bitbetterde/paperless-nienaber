@@ -690,6 +690,23 @@ table.table {
   }
 }
 
+// Side by side view: almost full viewport, fixed height so the pdf viewers can fill it
+.modal-dialog.modal-compare {
+  --bs-modal-margin: 3rem;
+  max-width: none;
+  height: calc(100% - 2 * var(--bs-modal-margin));
+  margin: var(--bs-modal-margin);
+
+  .modal-content {
+    height: 100%;
+  }
+
+  .modal-body {
+    display: flex;
+    min-height: 0;
+  }
+}
+
 .toast {
   --bs-toast-max-width: var(--pngx-toast-max-width);
 }

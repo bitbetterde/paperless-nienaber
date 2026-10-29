@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { NG_VALUE_ACCESSOR } from '@angular/forms'
 import { By } from '@angular/platform-browser'
 import { provideRouter } from '@angular/router'
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectComponent } from '@ng-select/ng-select'
 import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { of, Subject, throwError } from 'rxjs'
@@ -219,5 +220,38 @@ describe('DocumentLinkComponent', () => {
     )
     component.documentsInput$.next('bar')
     expect(foundDocs).toEqual([documents[1]])
+  })
+
+  it('should open the side by side dialog only when the parent document is known', async () => {
+    jest
+      .spyOn(documentService, 'getFew')
+      .mockReturnValue(of({ count: 1, all: [12], results: [documents[1]] }))
+    const modalService = TestBed.inject(NgbModal)
+    const setIds = jest.fn()
+    const openSpy = jest
+      .spyOn(modalService, 'open')
+      .mockReturnValue({ componentInstance: { setIds } } as any)
+    const compareButtons = () =>
+      fixture.debugElement.queryAll(
+        By.css('button[title="Compare side by side"]')
+      )
+
+    component.writeValue([12])
+    await fixture.whenStable()
+    expect(compareButtons()).toHaveLength(0)
+
+    fixture.componentRef.setInput('parentDocumentID', 23)
+    await fixture.whenStable()
+    expect(compareButtons()).toHaveLength(1)
+    expect(
+      compareButtons()[0].nativeElement.closest('.badge').querySelector('a')
+        .textContent
+    ).toContain('Document 12 bar')
+
+    compareButtons()[0].nativeElement.click()
+    expect(openSpy).toHaveBeenCalledWith(expect.anything(), {
+      modalDialogClass: 'modal-compare',
+    })
+    expect(setIds).toHaveBeenCalledWith([23, 12])
   })
 })
