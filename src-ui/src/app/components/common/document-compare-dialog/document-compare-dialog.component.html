@@ -1,0 +1,58 @@
+<div class="modal-header position-relative">
+  <div class="row g-2 flex-grow-1">
+    @for (side of sides(); track side.id) {
+      <div class="col-md-6 d-flex align-items-center justify-content-center gap-3">
+        <h5 class="modal-title text-truncate">
+          @if (side.document) {
+            {{ side.document.title | documentTitle }}
+          } @else {
+            #{{ side.id }}
+          }
+        </h5>
+        @if (side.document && !side.error && renderAsPdfViewer(side.document)) {
+          <div class="input-group input-group-sm w-auto flex-nowrap">
+            <button type="button" class="btn btn-outline-secondary" (click)="decreaseZoom($index)" i18n>-</button>
+            <select class="form-select" (change)="setZoom($index, $event.target.value)">
+              @for (setting of zoomSettings; track setting) {
+                <option [value]="setting" [selected]="setting === currentZoom(side)">
+                  {{ getZoomSettingTitle(setting) }}
+                </option>
+              }
+            </select>
+            <button type="button" class="btn btn-outline-secondary" (click)="increaseZoom($index)" i18n>+</button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+  <button type="button" class="btn-close position-absolute end-0 me-3" aria-label="Close" i18n-aria-label (click)="close()"></button>
+</div>
+<div class="modal-body">
+  <div class="row g-2 flex-grow-1">
+    @for (side of sides(); track side.id) {
+      <div class="col-md-6 d-flex flex-column">
+        <div class="compare-preview flex-grow-1">
+          @if (side.error) {
+            <div class="d-flex align-items-center justify-content-center">
+              <p class="fst-italic text-muted" i18n>Error loading document</p>
+            </div>
+          } @else if (side.document) {
+            @if (renderAsPdfViewer(side.document)) {
+              <div class="pdf-viewer-container">
+                <pngx-pdf-viewer
+                  [src]="side.previewUrl"
+                  [renderMode]="PdfRenderMode.All"
+                  [zoomScale]="side.zoomScale"
+                  [zoom]="side.zoom"
+                  (loadError)="updateSide($index, { error: true })">
+                </pngx-pdf-viewer>
+              </div>
+            } @else {
+              <object [data]="side.previewUrl | safeUrl" class="bg-light" width="100%" height="100%"></object>
+            }
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

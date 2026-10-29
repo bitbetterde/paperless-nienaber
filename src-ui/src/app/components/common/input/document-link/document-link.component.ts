@@ -14,6 +14,7 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms'
 import { RouterModule } from '@angular/router'
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectModule } from '@ng-select/ng-select'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import {
@@ -32,6 +33,7 @@ import { Document } from 'src/app/data/document'
 import { FILTER_SIMPLE_TITLE } from 'src/app/data/filter-rule-type'
 import { CustomDatePipe } from 'src/app/pipes/custom-date.pipe'
 import { DocumentService } from 'src/app/services/rest/document.service'
+import { DocumentCompareDialogComponent } from '../../document-compare-dialog/document-compare-dialog.component'
 import { AbstractInputComponent } from '../abstract-input'
 
 @Component({
@@ -61,6 +63,7 @@ export class DocumentLinkComponent
   implements OnInit, OnDestroy
 {
   private documentsService = inject(DocumentService)
+  private modalService = inject(NgbModal)
 
   documentsInput$ = new Subject<string>()
   foundDocuments$: Observable<Document[]>
@@ -162,6 +165,13 @@ export class DocumentLinkComponent
 
   trackByFn(item: Document) {
     return item.id
+  }
+
+  openCompare(document: Document) {
+    const modal = this.modalService.open(DocumentCompareDialogComponent, {
+      modalDialogClass: 'modal-compare',
+    })
+    modal.componentInstance.setIds([this.parentDocumentID, document.id])
   }
 
   ngOnDestroy(): void {
